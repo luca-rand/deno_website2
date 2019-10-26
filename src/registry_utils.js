@@ -24,7 +24,6 @@ export function proxy(pathname) {
     return null;
   }
 
-  assert(entry.url.endsWith("/"));
   assert(!path.startsWith("/"));
   return { entry, path };
 }
@@ -62,8 +61,8 @@ export function getEntry(name, branch = "master") {
       branch,
       raw: rawEntry,
       type: "url",
-      url: rawEntry.url.replace(/\$\{b}/, branch),
-      repo: rawEntry.repo.replace(/\$\{b}/, branch)
+      url: path => rawEntry.url.replace(/\$\{b}/, branch) + path,
+      repo: path => rawEntry.repo.replace(/\$\{b}/, branch) + path
     };
   }
   if (rawEntry.type === "esm") {
@@ -72,8 +71,8 @@ export function getEntry(name, branch = "master") {
       name,
       raw: rawEntry,
       type: "esm",
-      url: rawEntry.url.replace(/\$\{v}/, version),
-      repo: rawEntry.repo.replace(/\$\{v}/, version)
+      url: path => rawEntry.url.replace(/\$\{v}/, version) + path,
+      repo: path => rawEntry.repo.replace(/\$\{v}/, version) + path
     };
   }
   if (rawEntry.type === "github") {
@@ -82,12 +81,32 @@ export function getEntry(name, branch = "master") {
       branch,
       raw: rawEntry,
       type: "github",
-      url: `https://raw.githubusercontent.com/${rawEntry.owner}/${
-        rawEntry.repo
-      }/${branch}${rawEntry.path || "/"}`,
-      repo: `https://github.com/${rawEntry.owner}/${
-        rawEntry.repo
-      }/tree/${branch}${rawEntry.path || "/"}`
+      url: path =>
+        `https://raw.githubusercontent.com/${rawEntry.owner}/${
+          rawEntry.repo
+        }/${branch}${rawEntry.path || "/"}${path}`,
+      repo: path =>
+        `https://github.com/${rawEntry.owner}/${
+          rawEntry.repo
+        }/tree/${branch}${rawEntry.path || "/"}${path}`
+    };
+  }
+  if (rawEntry.type === "gitlab") {
+    return {
+      name,
+      branch,
+      raw: rawEntry,
+      type: "gitlab",
+      url: path => {
+        return `https://gitlab.com/api/v4/projects/${encodeURIComponent(
+          rawEntry.project
+        )}/repository/files/${encodeURIComponent(
+          (rawEntry.path || "") + path
+        )}/raw?ref=${branch}`;
+      },
+      repo: path =>
+        `https://gitlab.com/${rawEntry.project}/blob/${branch}${rawEntry.path ||
+          "/"}${path}`
     };
   }
   return null;

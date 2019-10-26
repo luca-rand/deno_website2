@@ -41,7 +41,7 @@ async function handleRequest(request) {
       headers: { "content-type": "text/plain" }
     });
   }
-  const rUrl = `${entry.url}${path}`;
+  const rUrl = entry.url(path);
   console.log("text proxy", rUrl);
   return fetch(rUrl);
 }

@@ -13,6 +13,7 @@ export default function Registry() {
     contents: null,
     rawUrl: null,
     repoUrl: null,
+    path: null,
     dir: null
   });
   const location = useLocation();
@@ -24,7 +25,7 @@ export default function Registry() {
     console.log({ path });
     if (!path || path.endsWith("/")) {
       // Render dir.
-      const repoUrl = `${entry.repo}${path}`;
+      const repoUrl = entry.repo(path);
       renderDir(path, entry).then(dir => {
         console.log({ dir });
         setState({ dir, repoUrl });
@@ -32,12 +33,12 @@ export default function Registry() {
       });
     } else {
       // Render file.
-      const rawUrl = `${entry.url}${path}`;
-      const repoUrl = `${entry.repo}${path}`;
+      const rawUrl = entry.url(path);
+      const repoUrl = entry.repo(path);
       console.log("fetch", rawUrl);
       fetch(rawUrl).then(async response => {
         const m = await response.text();
-        setState({ contents: m, rawUrl, repoUrl });
+        setState({ contents: m, rawUrl, repoUrl, path: path });
         setIsLoading(false);
       });
     }
@@ -50,6 +51,7 @@ export default function Registry() {
     const entries = [];
     for (const d of state.dir) {
       const name = d.type !== "dir" ? d.name : d.name + "/";
+      console.log(name);
       entries.push(
         <tr key={name}>
           <td>{d.type}</td>
@@ -75,8 +77,8 @@ export default function Registry() {
       </div>
     );
   } else {
-    const isMarkdown = state.rawUrl && state.rawUrl.endsWith(".md");
-    const hasDocsAvailable = state.rawUrl && state.rawUrl.endsWith(".ts");
+    const isMarkdown = state.path && state.path.endsWith(".md");
+    const hasDocsAvailable = state.path && state.path.endsWith(".ts");
     const isDocsPage = location.search.includes("doc") && state.contents;
     contentComponent = (
       <div>
@@ -152,5 +154,59 @@ async function renderDir(pathname, entry) {
       size: entry.size, // file only
       target: entry.target // symlink only
     }));
+  }
+  if (entry.raw.type === "gitlab") {
+    const project = entry.raw.project;
+    const path = [entry.raw.path, pathname].join("");
+    const url = `https://gitlab.com/api/v4/projects/${encodeURIComponent(
+      project
+    )}/repository/tree?ref=${entry.branch}&path=${encodeURIComponent(
+      path.replace(/^(\/)/, "")
+    )}&per_page=100`;
+    const res = await fetch(url);
+    if (res.status !== 200) {
+      throw Error(
+        `Got an error (${
+          res.status
+        }) when querying the GitLab API:\n${await res.text()}`
+      );
+    }
+    const data = await res.json();
+    if (!Array.isArray(data)) {
+      throw Error(
+        `Unexpectedly not array when querying the GitLab API:\n${JSON.stringify(
+          data,
+          null,
+          2
+        )}`
+      );
+    }
+
+    return data.map(entry => {
+      let type;
+      switch (entry.type) {
+        case "tree":
+          type = "dir";
+          break;
+        case "blob":
+          type = "file";
+          break;
+        default:
+          type = "unknown";
+          break;
+      }
+      if (entry.mode === "120000") {
+        type = "symlink";
+      }
+
+      console.log(entry.name);
+
+      return {
+        name: entry.name,
+        type: type, // "file" | "dir" | "symlink"
+        size: 0, // file only - not available via API
+        target: entry.name // symlink only
+      };
+    });
   }
 }

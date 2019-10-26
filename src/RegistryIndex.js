@@ -48,7 +48,7 @@ export default function RegistryIndex() {
             return (
               <li key={i}>
                 <Link href={link}>{name}</Link> (
-                <Link href={entry.repo}>repo</Link>)
+                <Link href={entry.repo("")}>repo</Link>)
               </li>
             );
           })}
