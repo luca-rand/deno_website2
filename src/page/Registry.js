@@ -6,6 +6,7 @@ import Button from "../component/Button";
 import Spinner from "../component/Spinner";
 import Title from "../component/Title";
 import { proxy } from "../util/registry_utils";
+import { Button as MaterialButton } from "@material-ui/core";
 
 const CodeBlock = React.lazy(() => import("../component/CodeBlock"));
 const Markdown = React.lazy(() => import("../component/Markdown"));
@@ -14,6 +15,7 @@ const Docs = React.lazy(() => import("../component/Docs"));
 export default function Registry() {
   const history = useHistory();
   const [isLoading, setIsLoading] = React.useState(true);
+  const [showHidden, setShowHidden] = React.useState(false);
   const [state, setState] = React.useState({
     contents: null,
     rawUrl: null,
@@ -88,7 +90,9 @@ export default function Registry() {
   } else if (state.dir) {
     const { body, files } = state.dir;
     const entries = [];
-    for (const d of files) {
+    const hiddenFiles = files.filter(({ name }) => name.startsWith("."));
+    const visibleFiles = files.filter(({ name }) => !name.startsWith("."));
+    for (const d of visibleFiles.concat(...(showHidden ? hiddenFiles : []))) {
       const name = d.type !== "dir" ? d.name : d.name + "/";
       entries.push(
         <tr key={name}>
@@ -118,6 +122,17 @@ export default function Registry() {
             <tbody>{entries}</tbody>
           </table>
         )}
+        {hiddenFiles.length > 0 && !showHidden ? (
+          <MaterialButton
+            onClick={() => setShowHidden(true)}
+            size="small"
+            variant="text"
+            color="primary"
+          >
+            Show {hiddenFiles.length} hidden file
+            {hiddenFiles.length !== 1 ? "s" : ""}
+          </MaterialButton>
+        ) : null}
         {body && <Markdown source={body} />}
       </div>
     );
