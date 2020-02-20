@@ -129,8 +129,8 @@ export default function Registry() {
             variant="text"
             color="primary"
           >
-            Show {hiddenFiles.length} hidden file
-            {hiddenFiles.length !== 1 ? "s" : ""}
+            SHOW {hiddenFiles.length} HIDDEN FILE
+            {hiddenFiles.length !== 1 ? "S" : ""}
           </MaterialButton>
         ) : null}
         {body && <Markdown source={body} />}
